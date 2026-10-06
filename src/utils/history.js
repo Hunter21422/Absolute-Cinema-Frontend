@@ -1,9 +1,7 @@
-const HISTORY_KEY = 'watch_history';
-const MAX_HISTORY_ITEMS = 20;
+const HISTORY_KEY = 'absolute_cinema_history';
 
 export const historyService = {
-  // Получить весь список просмотренных тайтлов
-  getHistory: () => {
+  getHistory() {
     try {
       const data = localStorage.getItem(HISTORY_KEY);
       return data ? JSON.parse(data) : [];
@@ -12,35 +10,29 @@ export const historyService = {
     }
   },
 
-  // Добавить фильм в историю при открытии плеера
-  addToHistory: (movie) => {
+  addToHistory(movie) {
     if (!movie || !movie.id) return;
-
     try {
-      const history = historyService.getHistory();
-      
-      // Удаляем фильм, если он уже был в истории (чтобы поднять его на первое место)
+      const history = this.getHistory();
       const filtered = history.filter((item) => item.id !== movie.id);
-      
-      const newItem = {
-        id: movie.id,
-        title: movie.title,
-        poster_url: movie.poster_url,
-        year: movie.year,
-        rating: movie.rating,
-        watched_at: new Date().toISOString(),
-      };
+      const updated = [
+        {
+          id: movie.id,
+          title: movie.title,
+          poster_url: movie.poster_url,
+          year: movie.year,
+          rating: movie.rating
+        },
+        ...filtered
+      ].slice(0, 20);
 
-      // Добавляем в начало и ограничиваем размер истории
-      const updated = [newItem, ...filtered].slice(0, MAX_HISTORY_ITEMS);
       localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
-    } catch (err) {
-      console.error('Ошибка записи истории:', err);
+    } catch (e) {
+      console.error('Ошибка записи истории:', e);
     }
   },
 
-  // Очистить историю
-  clearHistory: () => {
+  clearHistory() {
     localStorage.removeItem(HISTORY_KEY);
   }
 };
