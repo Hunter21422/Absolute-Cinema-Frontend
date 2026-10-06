@@ -25,6 +25,35 @@
       </div>
     </div>
 
+    <!-- 1. ИСТОРИЯ ПРОСМОТРОВ (показывается только если нет поиска) -->
+    <div v-if="!hasActiveFilters && historyList.length > 0" class="px-4 space-y-2">
+      <div class="flex justify-between items-center">
+        <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">Продолжить просмотр</span>
+        <button @click="clearHistory" class="text-[11px] text-zinc-500 hover:text-rose-400 transition-colors">
+          Очистить
+        </button>
+      </div>
+      
+      <!-- Горизонтальная лента с кастомным скроллбаром -->
+      <div class="flex gap-3 overflow-x-auto custom-scrollbar-x pb-2">
+        <div
+          v-for="item in historyList"
+          :key="item.id"
+          @click="$router.push(`/movie/${item.id}`)"
+          class="flex-shrink-0 w-28 cursor-pointer group"
+        >
+          <div class="relative aspect-[2/3] rounded-2xl overflow-hidden glass-panel border border-white/10 group-hover:border-rose-500/50 transition-all">
+            <img :src="item.poster_url" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            <span v-if="item.rating" class="absolute top-1.5 right-1.5 glass-pill px-1.5 py-0.5 rounded-md text-[9px] font-bold text-amber-300">
+              ★ {{ Number(item.rating).toFixed(1) }}
+            </span>
+          </div>
+          <p class="text-[11px] text-zinc-200 font-medium truncate mt-1.5">{{ item.title }}</p>
+          <p class="text-[10px] text-zinc-500">{{ item.year }}</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Hero-баннер (скрывается, если применен поиск или фильтры) -->
     <div v-if="!hasActiveFilters && featuredMovie" class="px-4">
       <div class="relative w-full h-[360px] rounded-3xl overflow-hidden glass-panel border border-white/10 shadow-2xl">
@@ -82,8 +111,8 @@
       </button>
     </div>
 
-    <!-- Горизонтальная лента жанров -->
-    <div class="px-4 flex gap-2 overflow-x-auto no-scrollbar">
+    <!-- Горизонтальная лента жанров с кастомным скроллбаром -->
+    <div class="px-4 flex gap-2 overflow-x-auto custom-scrollbar-x pb-2">
       <button
         v-for="genre in movieStore.genres"
         :key="genre"
@@ -131,11 +160,13 @@
 </template>
 
 <script setup>
-import { onMounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useMovieStore } from '../stores/movie'
+import { historyService } from '../utils/history'
 import MovieCard from '../components/MovieCard.vue'
 
 const movieStore = useMovieStore()
+const historyList = ref([])
 
 const contentTabs = [
   { label: 'Все подряд', value: 'all' },
@@ -180,7 +211,13 @@ const selectGenre = (genre) => {
   movieStore.fetchMovies(true)
 }
 
+const clearHistory = () => {
+  historyService.clearHistory()
+  historyList.value = []
+}
+
 onMounted(async () => {
+  historyList.value = historyService.getHistory()
   await movieStore.fetchGenres()
   movieStore.fetchMovies()
 })
