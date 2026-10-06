@@ -1,0 +1,46 @@
+/* Общие стили для плавного скролла */
+html, body {
+  scrollbar-gutter: stable;
+  scroll-behavior: smooth;
+}
+
+/* 1. Вертикальный скроллбар (основная страница) */
+::-webkit-scrollbar {
+  width: 6px;               /* ширина вертикального скролла */
+  height: 6px;              /* высота горизонтального скролла */
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05); /* полупрозрачная подложка */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25); /* цвет бегунка */
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+/* 2. Горизонтальные ленты (история, жанры, подборки) */
+.horizontal-scroll-container {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch; /* плавная прокрутка на iOS */
+}
+
+/* Тонкий бегунок специально для горизонтальных списков */
+.horizontal-scroll-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.horizontal-scroll-container::-webkit-scrollbar-thumb {
+  background: #3b82f6; /* Акцентный цвет (синий) */
+  border-radius: 10px;
+}
