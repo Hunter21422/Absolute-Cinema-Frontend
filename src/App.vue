@@ -1,79 +1,181 @@
+<script setup>
+import { ref, onMounted } from 'vue';
+import { historyService } from './history';
+
+// Состояния
+const movies = ref([]);               // Список фильмов из API
+const selectedMovie = ref(null);       // Выбранный фильм для плеера
+const historyList = ref([]);           // Список просмотренных фильмов
+
+// Загрузка истории при старте приложения
+onMounted(() => {
+  historyList.value = historyService.getHistory();
+});
+
+// Главная функция: открывает фильм и фиксирует в истории
+function openMovie(movie) {
+  selectedMovie.value = movie;
+  
+  // Сохраняем фильм в память
+  historyService.addToHistory(movie);
+  // Обновляем список истории на экране
+  historyList.value = historyService.getHistory();
+}
+
+function clearHistory() {
+  historyService.clearHistory();
+  historyList.value = [];
+}
+</script>
+
 <template>
-  <div class="min-h-screen bg-[#08090d] text-white flex flex-col justify-between selection:bg-rose-500/30">
-    <!-- Фоновое свечение -->
-    <div class="fixed top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-rose-600/10 rounded-full blur-[130px] pointer-events-none z-0"></div>
-
-    <main class="flex-grow z-10" :class="{ 'pb-24': $route.meta.showDock }">
-      <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
-    </main>
-
-    <!-- Плавающий нижний стеклянный Dock Bar (Каталог и Закладки) -->
-    <nav v-if="$route.meta.showDock" class="fixed bottom-4 left-4 right-4 z-50">
-      <div class="glass-panel max-w-xs mx-auto rounded-2xl p-2 px-8 flex justify-around items-center shadow-2xl">
-        <router-link to="/" class="nav-item" active-class="nav-active">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-          </svg>
-          <span class="text-[10px] font-medium tracking-wide">Каталог</span>
-        </router-link>
-
-        <router-link to="/favorites" class="nav-item" active-class="nav-active">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-          </svg>
-          <span class="text-[10px] font-medium tracking-wide">Закладки</span>
-        </router-link>
+  <div class="app-container">
+    <!-- 1. Лента истории просмотров (показывается только если есть история) -->
+    <section v-if="historyList.length > 0" class="history-section">
+      <div class="section-header">
+        <h3 class="section-title">Вы недавно смотрели</h3>
+        <button class="clear-btn" @click="clearHistory">Очистить</button>
       </div>
-    </nav>
+
+      <!-- Горизонтальная лента со скроллбаром -->
+      <div class="horizontal-scroll">
+        <div 
+          v-for="item in historyList" 
+          :key="item.id" 
+          class="history-card"
+          @click="openMovie(item)"
+        >
+          <img :src="item.poster_url" :alt="item.title" class="history-poster" />
+          <span class="history-title">{{ item.title }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Каталог фильмов (основной список) -->
+    <section class="catalog-section">
+      <h3>Каталог</h3>
+      <div class="movies-grid">
+        <div 
+          v-for="movie in movies" 
+          :key="movie.id" 
+          class="movie-card"
+          @click="openMovie(movie)"
+        >
+          <img :src="movie.poster_url" :alt="movie.title" />
+          <h4>{{ movie.title }}</h4>
+          <span class="badge">{{ movie.year }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Модальное окно или блок плеера -->
+    <div v-if="selectedMovie" class="modal-overlay" @click.self="selectedMovie = null">
+      <div class="modal-content">
+        <button class="close-btn" @click="selectedMovie = null">✕</button>
+        <iframe 
+          :src="selectedMovie.video_url" 
+          frameborder="0" 
+          allowfullscreen 
+          class="player-frame"
+        ></iframe>
+        <h2>{{ selectedMovie.title }} ({{ selectedMovie.year }})</h2>
+      </div>
+    </div>
   </div>
 </template>
 
-<script setup>
-import { onMounted } from 'vue'
-import { useUserStore } from './stores/user'
+<style>
+/* === СКРОЛЛБАРЫ (Вертикальный и Горизонтальный) === */
 
-const userStore = useUserStore()
+/* Тонкий вертикальный скроллбар всей страницы */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
 
-onMounted(() => {
-  const tg = window.Telegram?.WebApp
-  if (tg) {
-    tg.ready()
-    tg.expand()
-    if (tg.disableVerticalSwipes) tg.disableVerticalSwipes()
-    tg.headerColor = '#08090d'
-    tg.backgroundColor = '#08090d'
-  }
-  userStore.fetchProfile()
-})
-</script>
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
 
-<style scoped>
-.nav-item {
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+/* Стили горизонтальной ленты */
+.horizontal-scroll {
   display: flex;
-  flex-direction: column;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Цветной тонкий бегунок для ленты */
+.horizontal-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.horizontal-scroll::-webkit-scrollbar-thumb {
+  background: #3b82f6; /* Акцентный синий цвет */
+  border-radius: 10px;
+}
+
+/* Базовая разметка блоков */
+.app-container {
+  padding: 12px;
+  color: #fff;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.25rem;
-  color: #71717a;
-  transition-property: color, transform;
-  transition-duration: 200ms;
+  margin-bottom: 8px;
 }
 
-.nav-active {
-  color: #f43f5e;
-  transform: scale(1.05);
+.section-title {
+  font-size: 15px;
+  margin: 0;
 }
 
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
+.clear-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
 }
 
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+.history-card {
+  flex: 0 0 100px;
+  cursor: pointer;
+}
+
+.history-poster {
+  width: 100px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.history-title {
+  display: block;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 4px;
+}
+
+.player-frame {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
 }
 </style>
