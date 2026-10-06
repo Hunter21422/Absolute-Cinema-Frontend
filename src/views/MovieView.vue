@@ -42,7 +42,7 @@
         <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Озвучка / Перевод</span>
         <span class="text-[10px] text-zinc-500">{{ selectedTranslation || 'По умолчанию' }}</span>
       </div>
-      <div class="flex gap-2 overflow-x-auto no-scrollbar py-0.5">
+      <div class="flex gap-2 overflow-x-auto custom-scrollbar-x py-1">
         <button
           v-for="voice in availableTranslations"
           :key="voice"
@@ -63,7 +63,7 @@
       <div class="flex items-center justify-between">
         <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Сезоны</span>
       </div>
-      <div class="flex gap-2 overflow-x-auto no-scrollbar">
+      <div class="flex gap-2 overflow-x-auto custom-scrollbar-x py-1">
         <button
           v-for="s in (movie.seasons_count || 1)"
           :key="s"
@@ -104,7 +104,7 @@
         <p class="text-xs text-zinc-500 font-medium mt-0.5">{{ movie.original_title || movie.title }}</p>
       </div>
 
-      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
+      <div class="flex items-center gap-2 overflow-x-auto custom-scrollbar-x py-1">
         <span class="glass-pill px-3 py-1 rounded-xl text-xs font-bold text-amber-400">★ {{ movie.rating?.toFixed(1) || '0.0' }}</span>
         <span class="glass-pill px-3 py-1 rounded-xl text-xs text-zinc-300">{{ movie.year }}</span>
         <span class="glass-pill px-3 py-1 rounded-xl text-xs text-zinc-300">{{ movie.country || 'Мир' }}</span>
@@ -127,6 +127,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../api/client'
 import { useMovieStore } from '../stores/movie'
+import { historyService } from '../utils/history'
 import VideoPlayer from '../components/VideoPlayer.vue'
 
 const route = useRoute()
@@ -153,10 +154,16 @@ const availableTranslations = computed(() => {
 })
 
 const load = async () => {
-  const { data } = await api.get(`/movies/${route.params.id}`)
-  movie.value = data
-  if (availableTranslations.value.length > 0) {
-    selectedTranslation.value = availableTranslations.value[0]
+  try {
+    const { data } = await api.get(`/movies/${route.params.id}`)
+    movie.value = data
+    if (availableTranslations.value.length > 0) {
+      selectedTranslation.value = availableTranslations.value[0]
+    }
+    // Сохраняем фильм в историю при открытии
+    historyService.addToHistory(data)
+  } catch (err) {
+    console.error('Ошибка загрузки фильма:', err)
   }
 }
 
