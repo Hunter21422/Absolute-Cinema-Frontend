@@ -15,7 +15,7 @@
       </button>
 
       <span class="text-xs font-semibold text-zinc-400 uppercase tracking-widest">
-        {{ movie.is_series ? `Сезон ${selectedSeason} • Серия ${selectedEpisode}` : 'Онлайн просмотр' }}
+        Онлайн просмотр
       </span>
 
       <button @click="toggleFav" class="glass-panel p-2.5 rounded-2xl active:scale-95 transition-transform">
@@ -27,74 +27,7 @@
 
     <!-- Видеоплеер -->
     <div class="px-4">
-      <VideoPlayer
-        :video-url="movie.video_url"
-        :season="selectedSeason"
-        :episode="selectedEpisode"
-        :translation="selectedTranslation"
-        :is-series="movie.is_series"
-      />
-    </div>
-
-    <!-- Выбор озвучки (для фильмов, мультфильмов и сериалов) -->
-    <div v-if="availableTranslations.length" class="px-4 space-y-2">
-      <div class="flex items-center justify-between">
-        <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Озвучка / Перевод</span>
-        <span class="text-[10px] text-zinc-500">{{ selectedTranslation || 'По умолчанию' }}</span>
-      </div>
-      <div class="flex gap-2 overflow-x-auto custom-scrollbar-x py-1">
-        <button
-          v-for="voice in availableTranslations"
-          :key="voice"
-          @click="selectedTranslation = voice"
-          class="whitespace-nowrap px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border"
-          :class="selectedTranslation === voice 
-            ? 'bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-600/30' 
-            : 'glass-panel text-zinc-400 hover:text-white border-transparent'"
-        >
-          🎙️ {{ voice }}
-        </button>
-      </div>
-    </div>
-
-    <!-- Блок сериала: Выбор сезона и номера серии -->
-    <div v-if="movie.is_series" class="px-4 space-y-3">
-      <!-- 1. Сезоны -->
-      <div class="flex items-center justify-between">
-        <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Сезоны</span>
-      </div>
-      <div class="flex gap-2 overflow-x-auto custom-scrollbar-x py-1">
-        <button
-          v-for="s in (movie.seasons_count || 1)"
-          :key="s"
-          @click="selectSeason(s)"
-          class="px-4 py-2 rounded-xl text-xs font-bold transition-all border whitespace-nowrap"
-          :class="selectedSeason === s 
-            ? 'bg-white/20 text-white border-white/30 shadow-md' 
-            : 'glass-panel text-zinc-400 hover:text-white border-transparent'"
-        >
-          {{ s }} Сезон
-        </button>
-      </div>
-
-      <!-- 2. Сетка серий -->
-      <div class="flex items-center justify-between pt-1">
-        <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Серии</span>
-        <span class="text-[10px] text-zinc-500">Серия {{ selectedEpisode }} из {{ movie.episodes_count || 12 }}</span>
-      </div>
-      <div class="grid grid-cols-6 sm:grid-cols-8 gap-2">
-        <button
-          v-for="ep in (movie.episodes_count || 12)"
-          :key="ep"
-          @click="selectedEpisode = ep"
-          class="aspect-square flex items-center justify-center rounded-xl text-xs font-bold transition-all active:scale-95 border"
-          :class="selectedEpisode === ep 
-            ? 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-600/40' 
-            : 'glass-panel text-zinc-300 hover:border-white/20 border-transparent'"
-        >
-          {{ ep }}
-        </button>
-      </div>
+      <VideoPlayer :video-url="movie.video_url" />
     </div>
 
     <!-- Информация о тайтле -->
@@ -123,7 +56,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../api/client'
 import { useMovieStore } from '../stores/movie'
@@ -134,42 +67,15 @@ const route = useRoute()
 const movieStore = useMovieStore()
 const movie = ref(null)
 
-const selectedSeason = ref(1)
-const selectedEpisode = ref(1)
-const selectedTranslation = ref('')
-
-const defaultTranslations = [
-  'Дубляж',
-  'HDRezka Studio',
-  'LostFilm',
-  'Кубик в кубе',
-  'Субтитры'
-]
-
-const availableTranslations = computed(() => {
-  if (movie.value?.translations && movie.value.translations.length > 0) {
-    return movie.value.translations
-  }
-  return defaultTranslations
-})
-
 const load = async () => {
   try {
     const { data } = await api.get(`/movies/${route.params.id}`)
     movie.value = data
-    if (availableTranslations.value.length > 0) {
-      selectedTranslation.value = availableTranslations.value[0]
-    }
     // Сохраняем фильм в историю при открытии
     historyService.addToHistory(data)
   } catch (err) {
     console.error('Ошибка загрузки фильма:', err)
   }
-}
-
-const selectSeason = (s) => {
-  selectedSeason.value = s
-  selectedEpisode.value = 1
 }
 
 const toggleFav = () => {
