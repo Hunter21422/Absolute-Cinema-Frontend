@@ -11,11 +11,18 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
       </svg>
       <span>Не удалось загрузить видеопоток</span>
+      <button 
+        type="button"
+        @click="setupVideo" 
+        class="mt-2 px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors cursor-pointer"
+      >
+        Повторить попытку
+      </button>
     </div>
 
     <!-- 1. Iframe балансера (Kinobox, Kodik, Collaps и т.д.) -->
     <iframe
-      v-if="isIframe"
+      v-if="isIframe && embedUrl"
       :key="streamKey"
       :src="embedUrl"
       class="w-full h-full border-0 relative z-10"
@@ -29,12 +36,13 @@
 
     <!-- 2. Нативный плеер (mp4 / m3u8 / webm) -->
     <video
-      v-else
+      v-else-if="!isIframe && props.videoUrl"
       ref="videoEl"
       class="w-full h-full object-contain relative z-10"
       controls
       playsinline
       webkit-playsinline
+      @canplay="isLoading = false"
       @loadeddata="isLoading = false"
       @error="onError"
     ></video>
@@ -60,6 +68,7 @@ let hls = null
 
 // Извлечение расширения файла без query и hash
 const ext = computed(() => {
+  if (!props.videoUrl) return ''
   try {
     const path = new URL(props.videoUrl, location.href).pathname
     return path.split('.').pop().toLowerCase()
@@ -69,7 +78,10 @@ const ext = computed(() => {
 })
 
 // Если поток прямой файл — используем тег <video>, иначе <iframe>
-const isIframe = computed(() => !['mp4', 'm3u8', 'webm'].includes(ext.value))
+const isIframe = computed(() => {
+  if (!props.videoUrl) return false
+  return !['mp4', 'm3u8', 'webm'].includes(ext.value)
+})
 
 // Уникальный ключ для перерендера узла при переключении серии/озвучки
 const streamKey = computed(() => {
@@ -100,7 +112,8 @@ const embedUrl = computed(() => {
   }
 })
 
-function onError() {
+function onError(err) {
+  console.error('[VideoPlayer] Playback error:', err, videoEl.value?.error)
   isLoading.value = false
   hasError.value = true
 }
@@ -114,6 +127,11 @@ function destroyHls() {
 
 async function setupVideo() {
   destroyHls()
+  if (!props.videoUrl) {
+    isLoading.value = false
+    return
+  }
+
   isLoading.value = true
   hasError.value = false
 
@@ -128,11 +146,11 @@ async function setupVideo() {
     hls.loadSource(props.videoUrl)
     hls.attachMedia(video)
     hls.on(Hls.Events.ERROR, (_, data) => {
-      if (data.fatal) onError()
+      if (data.fatal) onError(data)
     })
   } else {
-    // MP4/WebM или Safari с нативной поддержкой HLS
     video.src = props.videoUrl
+    video.load()
   }
 }
 
@@ -146,14 +164,39 @@ onMounted(() => {
 
   const tg = window.Telegram?.WebApp
   if (tg) {
-    tg.disableVerticalSwipes?.()
-    tg.requestFullscreen?.()
-    tg.expand?.()
+    try {
+      if (typeof tg.isVersionAtLeast === 'function' && tg.isVersionAtLeast('7.7')) {
+        tg.disableVerticalSwipes?.()
+      }
+    } catch (e) {
+      console.warn('[Telegram.WebApp] disableVerticalSwipes ignored:', e)
+    }
+
+    try {
+      if (typeof tg.isVersionAtLeast === 'function' && tg.isVersionAtLeast('8.0')) {
+        tg.requestFullscreen?.()
+      }
+    } catch (e) {
+      console.warn('[Telegram.WebApp] requestFullscreen ignored:', e)
+    }
+
+    try {
+      tg.expand?.()
+    } catch (e) {
+      console.warn('[Telegram.WebApp] expand ignored:', e)
+    }
   }
 })
 
 onBeforeUnmount(() => {
   destroyHls()
-  window.Telegram?.WebApp?.enableVerticalSwipes?.()
+  try {
+    const tg = window.Telegram?.WebApp
+    if (tg && typeof tg.isVersionAtLeast === 'function' && tg.isVersionAtLeast('7.7')) {
+      tg.enableVerticalSwipes?.()
+    }
+  } catch (e) {
+    console.warn('[Telegram.WebApp] enableVerticalSwipes ignored:', e)
+  }
 })
 </script>
