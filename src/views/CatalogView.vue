@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6 pt-2 pb-14 text-white">
+  <div class="space-y-5 pt-2 pb-14 text-white">
     <!-- 1. ПОИСКОВАЯ СТРОКА -->
     <div class="px-4">
       <div class="relative">
@@ -25,12 +25,40 @@
       </div>
     </div>
 
-    <!-- ЕСЛИ ВКЛЮЧЕН ПОИСК ИЛИ ЖАНРОВЫЙ ФИЛЬТР: ПОКАЗЫВАЕМ СЕТКУ ВЫДАЧИ -->
+    <!-- 2. ВЫБОР ТИПА: Все / Фильмы / Сериалы -->
+    <div class="px-4 flex gap-1.5 p-1 glass-panel rounded-2xl max-w-md mx-auto">
+      <button
+        v-for="tab in contentTabs"
+        :key="tab.value"
+        @click="selectContentType(tab.value)"
+        class="flex-1 py-1.5 text-[11px] font-semibold rounded-xl transition-all"
+        :class="movieStore.filters.contentType === tab.value ? 'bg-rose-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <!-- 3. ГОРИЗОНТАЛЬНАЯ ЛЕНТА ЖАНРОВ -->
+    <div class="px-4 flex gap-2 overflow-x-auto custom-scrollbar-x pb-1">
+      <button
+        v-for="genre in movieStore.genres"
+        :key="genre"
+        @click="selectGenre(genre)"
+        class="whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all"
+        :class="movieStore.filters.genre === genre 
+          ? 'bg-rose-600 text-white border border-rose-500 shadow-lg shadow-rose-600/30' 
+          : 'glass-panel text-zinc-400 hover:text-zinc-200 border-transparent'"
+      >
+        {{ genre }}
+      </button>
+    </div>
+
+    <!-- ЕСЛИ ВКЛЮЧЕН ПОИСК, ВЫБРАН ЖАНР ИЛИ ТИП: ПОКАЗЫВАЕМ СЕТКУ ВЫДАЧИ -->
     <div v-if="hasActiveFilters" class="px-4 space-y-4">
       <div class="flex justify-between items-center text-xs">
-        <span class="text-zinc-400">Результатов: <b class="text-white">{{ movieStore.total }}</b></span>
+        <span class="text-zinc-400">Найдено: <b class="text-white">{{ movieStore.total }}</b></span>
         <button @click="movieStore.resetFilters()" class="text-rose-400 font-medium hover:underline">
-          Сбросить фильтры
+          Сбросить всё ✕
         </button>
       </div>
 
@@ -41,10 +69,10 @@
       <div v-else-if="movieStore.movies.length === 0" class="glass-panel p-6 rounded-3xl text-center space-y-3 mt-2 border border-white/5">
         <div class="text-3xl mb-1">🔍</div>
         <p class="text-xs text-zinc-200 font-bold">
-          По запросу «{{ movieStore.filters.search }}» ничего не найдено
+          {{ movieStore.filters.search ? `По запросу «${movieStore.filters.search}» ничего не найдено` : 'В этой категории пока ничего нет' }}
         </p>
         <p class="text-[11px] text-zinc-400 max-w-xs mx-auto leading-relaxed">
-          Этого фильма пока нет в каталоге, но мы можем найти и добавить его для вас!
+          Этого фильма пока нет в каталоге, но мы можем найти и добавить его специально для вас!
         </p>
         <div class="pt-1">
           <button
@@ -62,10 +90,10 @@
       </div>
     </div>
 
-    <!-- ОСНОВНОЙ КИНЕМАТОГРАФИЧНЫЙ ЭКРАН (КОГДА НЕТ ПОИСКА) -->
+    <!-- ДЕФОЛТНЫЙ ВИД: КИНЕМАТОГРАФИЧНЫЕ ПОЛКИ (КОГДА ФИЛЬТРЫ НЕ АКТИВНЫ) -->
     <div v-else class="space-y-6">
 
-      <!-- 2. HERO-БАННЕР ГЛАВНОГО ХИТА -->
+      <!-- 4. HERO-БАННЕР ХИТА -->
       <div v-if="featuredMovie" class="px-4">
         <div class="relative w-full h-[370px] rounded-3xl overflow-hidden glass-panel border border-white/10 shadow-2xl">
           <img
@@ -110,7 +138,7 @@
         </div>
       </div>
 
-      <!-- 3. ПРОДОЛЖИТЬ ПРОСМОТР (ИСТОРИЯ) -->
+      <!-- 5. ИСТОРИЯ ПРОСМОТРОВ -->
       <div v-if="historyList.length > 0" class="px-4 space-y-2.5">
         <div class="flex justify-between items-center">
           <span class="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
@@ -139,7 +167,7 @@
         </div>
       </div>
 
-      <!-- 4. ПОЛКА: ПОПУЛЯРНЫЕ НОВИНКИ -->
+      <!-- 6. ПОЛКА: ПОПУЛЯРНЫЕ НОВИНКИ -->
       <section v-if="popularMovies.length > 0" class="space-y-3">
         <div class="px-4 flex justify-between items-center">
           <h2 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
@@ -172,7 +200,7 @@
         </div>
       </section>
 
-      <!-- 5. БЛОК СЕТЕЙ И ПЛАТФОРМ (КАК НА РЕФЕРЕНСЕ) -->
+      <!-- 7. БЛОК СЕТЕЙ И СТУДИЙ -->
       <section class="space-y-2.5 px-4">
         <div class="flex justify-between items-center">
           <h2 class="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
@@ -196,7 +224,7 @@
         </div>
       </section>
 
-      <!-- 6. ПОЛКА: СВЕЖИЕ ФИЛЬМЫ -->
+      <!-- 8. ПОЛКА: СВЕЖИЕ ФИЛЬМЫ -->
       <section v-if="freshMovies.length > 0" class="space-y-3">
         <div class="px-4 flex justify-between items-center">
           <h2 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
@@ -228,7 +256,7 @@
         </div>
       </section>
 
-      <!-- 7. ПОЛКА: СЕРИАЛЫ -->
+      <!-- 9. ПОЛКА: СЕРИАЛЫ -->
       <section v-if="seriesList.length > 0" class="space-y-3">
         <div class="px-4 flex justify-between items-center">
           <h2 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
@@ -263,13 +291,13 @@
         </div>
       </section>
 
-      <!-- 8. БЛОК СТОЛА ЗАКАЗОВ В ПОДВАЛЕ ГЛАВНОЙ СТРАНИЦЫ -->
+      <!-- 10. КАРТОЧКА ЗАКАЗА КИНО В ПОДВАЛЕ -->
       <div class="px-4 pt-2">
         <div class="glass-panel p-5 rounded-3xl border border-rose-500/20 bg-gradient-to-r from-rose-950/20 to-black/40 text-center space-y-2.5">
           <div class="text-2xl">🍿</div>
           <h3 class="text-xs font-bold text-white uppercase tracking-wider">Не нашли нужный фильм?</h3>
           <p class="text-[11px] text-zinc-400 max-w-xs mx-auto leading-relaxed">
-            Оставьте заявку в Стол Заказов — мы найдём фильм в дубляже и пришлём уведомление!
+            Оставьте заявку — мы найдем его в хорошем качестве и добавим в бота!
           </p>
           <button
             @click="openRequestModal('')"
@@ -325,7 +353,7 @@
 
               <div>
                 <label class="block text-[11px] font-semibold text-zinc-300 mb-1">
-                  Год или озвучка
+                  Год или пожелания
                 </label>
                 <input
                   v-model="requestForm.comment"
@@ -368,7 +396,13 @@ import MovieCard from '../components/MovieCard.vue'
 const movieStore = useMovieStore()
 const historyList = ref([])
 
-// Платформы и сети (как на референсе)
+const contentTabs = [
+  { label: 'Все подряд', value: 'all' },
+  { label: 'Фильмы', value: 'movie' },
+  { label: 'Сериалы', value: 'series' }
+]
+
+// Сети и студии
 const networks = [
   { name: 'Netflix', query: 'Netflix', bgClass: 'bg-[#E50914] text-white', icon: '🔴' },
   { name: 'HBO Max', query: 'HBO', bgClass: 'bg-gradient-to-r from-purple-700 to-indigo-800 text-white', icon: '🟣' },
@@ -383,33 +417,44 @@ const filterByNetwork = (query) => {
   movieStore.fetchMovies(true)
 }
 
-// Вычисляемые списки для кинематографичных полок
-const allMovies = computed(() => movieStore.movies || [])
+// Выбор жанра
+const selectGenre = (genre) => {
+  if (movieStore.filters.genre === genre) return
+  movieStore.filters.genre = genre
+  movieStore.fetchMovies(true)
+}
 
+// Выбор категории (Фильмы/Сериалы)
+const selectContentType = (type) => {
+  if (movieStore.filters.contentType === type) return
+  movieStore.filters.contentType = type
+  movieStore.fetchMovies(true)
+}
+
+const allMovies = computed(() => movieStore.movies || [])
 const featuredMovie = computed(() => allMovies.value[0] || null)
 
-// 1. Топ новинки (по рейтингу и просмотрам)
+// Полки
 const popularMovies = computed(() => {
   return [...allMovies.value]
     .sort((a, b) => (Number(b.rating || 0) - Number(a.rating || 0)))
     .slice(0, 10)
 })
 
-// 2. Свежие фильмы (исключаем сериалы)
 const freshMovies = computed(() => {
   return allMovies.value.filter(m => !m.is_series).slice(0, 10)
 })
 
-// 3. Сериалы
 const seriesList = computed(() => {
   return allMovies.value.filter(m => m.is_series).slice(0, 10)
 })
 
+// Проверка активности фильтров
 const hasActiveFilters = computed(() => {
   return (
-    movieStore.filters.search.trim() !== '' ||
-    movieStore.filters.genre !== 'Все' ||
-    movieStore.filters.contentType !== 'all'
+    Boolean(movieStore.filters.search && movieStore.filters.search.trim() !== '') ||
+    Boolean(movieStore.filters.genre && movieStore.filters.genre !== 'Все') ||
+    Boolean(movieStore.filters.contentType && movieStore.filters.contentType !== 'all')
   )
 })
 
@@ -428,17 +473,12 @@ const clearSearch = () => {
   movieStore.fetchMovies(true)
 }
 
-const selectContentType = (type) => {
-  movieStore.filters.contentType = type
-  movieStore.fetchMovies(true)
-}
-
 const clearHistory = () => {
   historyService.clearHistory()
   historyList.value = []
 }
 
-// Модалка заказов
+// Модальное окно
 const isRequestModalOpen = ref(false)
 const requestLoading = ref(false)
 const requestSuccess = ref('')
