@@ -14,14 +14,16 @@
       </button>
     </div>
 
-    <!-- Iframe-балансер -->
+    <!-- Iframe-балансер с полными разрешениями для Android WebView -->
     <iframe
       v-if="url && isIframe"
       :key="'iframe_' + streamKey"
       :src="embedUrl"
       class="w-full h-full border-0 relative z-10"
-      allow="autoplay *; fullscreen *; picture-in-picture *; encrypted-media *"
+      allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write"
       allowfullscreen
+      webkitallowfullscreen
+      mozallowfullscreen
       @load="isLoading = false"
     ></iframe>
 
@@ -51,7 +53,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
-// Принимает и videoUrl, и src — чтобы работать с любым вызовом из родителя
 const props = defineProps({
   videoUrl: { type: String, default: '' },
   src: { type: String, default: '' },
@@ -119,7 +120,6 @@ async function setupVideo() {
   const video = videoEl.value
   if (!video) return
 
-  // m3u8 нативно играет на iOS/Safari; на ПК-Chrome без hls.js не пойдёт
   if (ext.value === 'm3u8' && !video.canPlayType('application/vnd.apple.mpegurl')) {
     console.warn('[VideoPlayer] HLS не поддерживается этим браузером без hls.js')
   }
@@ -127,7 +127,7 @@ async function setupVideo() {
   video.load()
 }
 
-// Безопасный вызов методов Telegram: на старых клиентах они кидают WebAppMethodUnsupported
+// Безопасный вызов методов Telegram WebApp
 function tgSafe(minVersion, fn) {
   try {
     const tg = window.Telegram?.WebApp
@@ -143,13 +143,15 @@ watch(() => [url.value, props.season, props.episode, props.translation], setupVi
 
 onMounted(() => {
   setupVideo()
+  // Раскрываем WebApp на максимум, чтобы WebView не ограничивал размеры видео
   tgSafe(null, tg => tg.expand?.())
   tgSafe('7.7', tg => tg.disableVerticalSwipes?.())
-  // requestFullscreen намеренно НЕ вызываем автоматически —
-  // у <video controls> есть своя кнопка полноэкранного режима
+  // В Telegram 8.0+ разрешаем наэкранный фуллскрин
+  tgSafe('8.0', tg => tg.requestFullscreen?.())
 })
 
 onBeforeUnmount(() => {
   tgSafe('7.7', tg => tg.enableVerticalSwipes?.())
+  tgSafe('8.0', tg => tg.exitFullscreen?.())
 })
 </script>
