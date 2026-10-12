@@ -126,19 +126,31 @@
       </button>
     </div>
 
-    <!-- Индикатор выдачи и кнопка сброса -->
+    <!-- Индикатор выдачи, кнопка заказа и кнопка сброса -->
     <div class="px-4 flex justify-between items-center text-[11px]">
-      <div class="flex items-center gap-1.5 text-zinc-400">
+      <div class="flex items-center gap-2 text-zinc-400">
         <span>Найдено: <b class="text-zinc-200">{{ movieStore.total }}</b></span>
-        <span v-if="hasActiveFilters" class="text-rose-500">• Фильтры активны</span>
+        <span v-if="hasActiveFilters" class="text-rose-500 font-medium">Фильтры активны</span>
       </div>
-      <button
-        v-if="hasActiveFilters"
-        @click="movieStore.resetFilters()"
-        class="text-rose-400 hover:underline font-medium"
-      >
-        Сбросить всё
-      </button>
+      
+      <div class="flex items-center gap-3">
+        <!-- Кнопка вызова заказа фильма -->
+        <button
+          @click="openRequestModal('')"
+          class="text-zinc-400 hover:text-rose-400 active:scale-95 transition-all flex items-center gap-1 font-medium"
+        >
+          <span>✨</span>
+          <span>Заказать фильм</span>
+        </button>
+
+        <button
+          v-if="hasActiveFilters"
+          @click="movieStore.resetFilters()"
+          class="text-rose-400 hover:underline font-medium"
+        >
+          Сбросить всё
+        </button>
+      </div>
     </div>
 
     <!-- Сетка карточек -->
@@ -147,26 +159,192 @@
         <div class="w-8 h-8 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
 
-      <div v-else-if="movieStore.movies.length === 0" class="glass-panel p-8 rounded-3xl text-center space-y-2 mt-2">
-        <p class="text-xs text-zinc-300 font-bold">Ничего не найдено</p>
-        <p class="text-[11px] text-zinc-500">Попробуйте изменить запрос или выбрать другой жанр</p>
+      <!-- Ничего не найдено + Предложка -->
+      <div v-else-if="movieStore.movies.length === 0" class="glass-panel p-6 rounded-3xl text-center space-y-3 mt-2 border border-white/5">
+        <div class="text-3xl mb-1">🔍</div>
+        <p class="text-xs text-zinc-200 font-bold">
+          {{ movieStore.filters.search ? `По запросу «${movieStore.filters.search}» ничего не найдено` : 'Ничего не найдено' }}
+        </p>
+        <p class="text-[11px] text-zinc-400 max-w-xs mx-auto leading-relaxed">
+          Этого фильма пока нет в каталоге, но мы можем найти и загрузить его специально для вас!
+        </p>
+        <div class="pt-1">
+          <button
+            @click="openRequestModal(movieStore.filters.search)"
+            class="glow-button px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white inline-flex items-center gap-2 active:scale-95 transition-all"
+          >
+            <span>🍿</span>
+            <span>Заказать добавление</span>
+          </button>
+        </div>
       </div>
 
       <div v-else class="grid grid-cols-2 gap-3.5">
         <MovieCard v-for="m in movieStore.movies" :key="m.id" :movie="m" />
       </div>
     </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО СТОЛА ЗАКАЗОВ -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div 
+          v-if="isRequestModalOpen" 
+          class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-4"
+          @click.self="closeRequestModal"
+        >
+          <div class="w-full max-w-sm glass-panel border border-white/10 rounded-3xl p-5 text-white shadow-2xl space-y-4">
+            
+            <!-- Заголовок -->
+            <div class="flex items-center justify-between pb-2 border-b border-white/5">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">🎬</span>
+                <h3 class="text-sm font-bold tracking-tight">Заказать фильм или сериал</h3>
+              </div>
+              <button 
+                @click="closeRequestModal" 
+                class="w-7 h-7 flex items-center justify-center rounded-full bg-white/10 text-zinc-400 hover:text-white active:scale-90 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p class="text-[11px] text-zinc-400 leading-relaxed">
+              Укажите название фильма, и мы постараемся найти его в хорошем качестве и выложить в бота.
+            </p>
+
+            <!-- Форма заказа -->
+            <form @submit.prevent="submitMovieRequest" class="space-y-3">
+              <div>
+                <label class="block text-[11px] font-semibold text-zinc-300 mb-1">
+                  Название <span class="text-rose-500">*</span>
+                </label>
+                <input
+                  v-model="requestForm.title"
+                  type="text"
+                  placeholder="Например: Джентльмены"
+                  class="w-full bg-[#18181e] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-rose-500 transition"
+                  required
+                />
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-zinc-300 mb-1">
+                  Год или пожелание к озвучке
+                </label>
+                <input
+                  v-model="requestForm.comment"
+                  type="text"
+                  placeholder="Например: 2020 год, дубляж RHS"
+                  class="w-full bg-[#18181e] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-rose-500 transition"
+                />
+              </div>
+
+              <!-- Уведомления об успехе или ошибке -->
+              <div v-if="requestSuccess" class="p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] rounded-xl text-center">
+                {{ requestSuccess }}
+              </div>
+
+              <div v-if="requestError" class="p-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[11px] rounded-xl text-center">
+                {{ requestError }}
+              </div>
+
+              <!-- Кнопка отправки -->
+              <button
+                type="submit"
+                :disabled="requestLoading || !requestForm.title.trim()"
+                class="w-full mt-2 glow-button py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-white disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
+              >
+                <span v-if="requestLoading" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span v-else>Отправить заявку 🚀</span>
+              </button>
+            </form>
+
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, reactive } from 'vue'
 import { useMovieStore } from '../stores/movie'
 import { historyService } from '../utils/history'
 import MovieCard from '../components/MovieCard.vue'
 
 const movieStore = useMovieStore()
 const historyList = ref([])
+
+// Состояние модального окна предложки
+const isRequestModalOpen = ref(false)
+const requestLoading = ref(false)
+const requestSuccess = ref('')
+const requestError = ref('')
+const requestForm = reactive({
+  title: '',
+  comment: ''
+})
+
+const openRequestModal = (initialTitle = '') => {
+  requestForm.title = initialTitle || ''
+  requestForm.comment = ''
+  requestSuccess.value = ''
+  requestError.value = ''
+  isRequestModalOpen.value = true
+}
+
+const closeRequestModal = () => {
+  isRequestModalOpen.value = false
+  requestSuccess.value = ''
+  requestError.value = ''
+}
+
+const submitMovieRequest = async () => {
+  if (!requestForm.title.trim()) return
+
+  requestLoading.value = true
+  requestError.value = ''
+  requestSuccess.value = ''
+
+  try {
+    const token = localStorage.getItem('token') || localStorage.getItem('auth_token')
+    const initData = window.Telegram?.WebApp?.initData || ''
+
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(initData ? { 'X-Telegram-Init-Data': initData } : {})
+    }
+
+    const response = await fetch('/api/v1/requests/', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        title: requestForm.title.trim(),
+        comment: requestForm.comment.trim()
+      })
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.detail || 'Не удалось отправить заявку')
+    }
+
+    requestSuccess.value = 'Заявка принята! Мы скоро добавим этот фильм.'
+    requestForm.title = ''
+    requestForm.comment = ''
+
+    setTimeout(() => {
+      closeRequestModal()
+    }, 1600)
+  } catch (err) {
+    requestError.value = err.message || 'Ошибка соединения с сервером'
+  } finally {
+    requestLoading.value = false
+  }
+}
 
 const contentTabs = [
   { label: 'Все подряд', value: 'all' },
@@ -222,3 +400,14 @@ onMounted(async () => {
   movieStore.fetchMovies()
 })
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
