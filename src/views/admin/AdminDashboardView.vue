@@ -91,11 +91,138 @@
 
       <p v-if="publishSuccess" class="text-center text-xs text-emerald-400 font-bold">✓ Фильм успешно добавлен в базу!</p>
     </form>
+
+    <!-- ЗАЯВКИ ЗРИТЕЛЕЙ (СТОЛ ЗАКАЗОВ) -->
+    <div class="glass-panel p-4 rounded-2xl space-y-3 border border-white/10">
+      <div class="flex justify-between items-center pb-1 border-b border-white/5">
+        <div>
+          <h2 class="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+            <span>📬</span> Заявки зрителей
+          </h2>
+          <p class="text-[10px] text-zinc-500">Заказы на добавление кино</p>
+        </div>
+        <button
+          @click="loadRequests"
+          :disabled="requestsLoading"
+          class="glass-pill px-2.5 py-1 rounded-xl text-[10px] text-zinc-400 hover:text-white flex items-center gap-1 transition"
+        >
+          <span :class="{ 'animate-spin': requestsLoading }">🔄</span>
+        </button>
+      </div>
+
+      <!-- Табы фильтров -->
+      <div class="flex gap-1.5 overflow-x-auto pb-1 text-xs custom-scrollbar-x">
+        <button
+          v-for="tab in filterTabs"
+          :key="tab.value"
+          @click="activeFilter = tab.value"
+          :class="[
+            'px-2.5 py-1 rounded-xl font-medium transition text-[10px] whitespace-nowrap',
+            activeFilter === tab.value
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+              : 'bg-black/30 text-zinc-400 hover:text-white'
+          ]"
+        >
+          {{ tab.label }}
+          <span class="opacity-70 ml-0.5">({{ tab.count }})</span>
+        </button>
+      </div>
+
+      <!-- Загрузка заявок -->
+      <div v-if="requestsLoading" class="py-6 text-center text-zinc-500 text-xs">
+        <div class="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+        Загрузка...
+      </div>
+
+      <!-- Пусто -->
+      <div v-else-if="filteredRequests.length === 0" class="py-6 text-center text-zinc-500 text-xs">
+        📭 Заявок в этом разделе нет
+      </div>
+
+      <!-- Карточки заявок -->
+      <div v-else class="space-y-2.5 pt-1">
+        <div
+          v-for="req in filteredRequests"
+          :key="req.id"
+          class="bg-black/30 border border-white/5 rounded-xl p-3 space-y-2"
+        >
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="text-xs font-bold text-white flex items-center gap-1.5 flex-wrap">
+                <span>{{ req.title }}</span>
+                <a
+                  :href="`https://www.kinopoisk.ru/index.php?kp_query=${encodeURIComponent(req.title)}`"
+                  target="_blank"
+                  class="text-[9px] bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 px-1.5 py-0.5 rounded transition inline-flex items-center"
+                >
+                  КП ↗
+                </a>
+              </div>
+              <p class="text-[10px] text-zinc-500 mt-0.5">
+                @{{ req.username || 'Аноним' }} • {{ formatDate(req.created_at) }}
+              </p>
+            </div>
+
+            <!-- Бейдж статуса -->
+            <span
+              :class="[
+                'text-[9px] px-2 py-0.5 rounded-full font-bold border shrink-0',
+                statusBadge(req.status).class
+              ]"
+            >
+              {{ statusBadge(req.status).label }}
+            </span>
+          </div>
+
+          <!-- Комментарий к заявке -->
+          <p v-if="req.comment" class="bg-black/40 rounded-lg p-2 text-[10px] text-zinc-400 border border-white/5">
+            <span class="text-zinc-500">Пожелание:</span> {{ req.comment }}
+          </p>
+
+          <!-- Действия -->
+          <div class="flex items-center justify-between pt-1 border-t border-white/5 text-[10px]">
+            <div class="flex items-center gap-1.5">
+              <button
+                v-if="req.status !== 'completed'"
+                @click="updateRequestStatus(req.id, 'completed')"
+                class="px-2 py-0.5 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/30 font-medium transition"
+              >
+                ✓ Готово (пуш)
+              </button>
+
+              <button
+                v-if="req.status !== 'rejected'"
+                @click="updateRequestStatus(req.id, 'rejected')"
+                class="px-2 py-0.5 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-500/30 font-medium transition"
+              >
+                ✕ Отклонить
+              </button>
+
+              <button
+                v-if="req.status !== 'pending'"
+                @click="updateRequestStatus(req.id, 'pending')"
+                class="px-2 py-0.5 rounded-lg bg-white/5 text-zinc-400 hover:text-white transition"
+              >
+                В ожидание
+              </button>
+            </div>
+
+            <button
+              @click="deleteRequest(req.id)"
+              class="text-zinc-500 hover:text-rose-400 px-1 py-0.5 transition"
+              title="Удалить заявку"
+            >
+              🗑
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../api/client'
 
@@ -108,6 +235,23 @@ const parseError = ref('')
 const publishSuccess = ref(false)
 const form = ref(null)
 
+// Состояние заявок стола заказов
+const requests = ref([])
+const requestsLoading = ref(false)
+const activeFilter = ref('pending')
+
+const filterTabs = computed(() => [
+  { label: 'Ожидают', value: 'pending', count: requests.value.filter(r => r.status === 'pending').length },
+  { label: 'Все', value: 'all', count: requests.value.length },
+  { label: 'Добавлены', value: 'completed', count: requests.value.filter(r => r.status === 'completed').length },
+  { label: 'Отклонены', value: 'rejected', count: requests.value.filter(r => r.status === 'rejected').length }
+])
+
+const filteredRequests = computed(() => {
+  if (activeFilter.value === 'all') return requests.value
+  return requests.value.filter(r => r.status === activeFilter.value)
+})
+
 const loadStats = async () => {
   try {
     const { data } = await api.get('/admin/stats')
@@ -117,6 +261,55 @@ const loadStats = async () => {
       logout()
     }
   }
+}
+
+const loadRequests = async () => {
+  requestsLoading.value = true
+  try {
+    const { data } = await api.get('/requests/')
+    requests.value = Array.isArray(data) ? data : []
+  } catch (err) {
+    console.error('Ошибка загрузки заявок:', err)
+  } finally {
+    requestsLoading.value = false
+  }
+}
+
+const updateRequestStatus = async (id, status) => {
+  try {
+    await api.patch(`/requests/${id}`, { status })
+    const target = requests.value.find(r => r.id === id)
+    if (target) target.status = status
+  } catch (err) {
+    console.error('Ошибка обновления статуса заявки:', err)
+  }
+}
+
+const deleteRequest = async (id) => {
+  if (!confirm('Удалить эту заявку?')) return
+  try {
+    await api.delete(`/requests/${id}`)
+    requests.value = requests.value.filter(r => r.id !== id)
+  } catch (err) {
+    console.error('Ошибка удаления заявки:', err)
+  }
+}
+
+const statusBadge = (status) => {
+  switch (status) {
+    case 'completed':
+      return { label: 'Добавлен', class: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' }
+    case 'rejected':
+      return { label: 'Отклонён', class: 'bg-rose-500/20 text-rose-400 border-rose-500/30' }
+    default:
+      return { label: 'Ожидает', class: 'bg-amber-500/20 text-amber-400 border-amber-500/30' }
+  }
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
 const parseKp = async () => {
@@ -154,5 +347,8 @@ const logout = () => {
   router.push('/')
 }
 
-onMounted(loadStats)
+onMounted(() => {
+  loadStats()
+  loadRequests()
+})
 </script>

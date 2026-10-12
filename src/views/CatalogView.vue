@@ -309,12 +309,19 @@ const submitMovieRequest = async () => {
 
   try {
     const token = localStorage.getItem('token') || localStorage.getItem('auth_token')
-    const initData = window.Telegram?.WebApp?.initData || ''
+    const rawInitData = window.Telegram?.WebApp?.initData || ''
 
     const headers = {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      ...(initData ? { 'X-Telegram-Init-Data': initData } : {})
+      'Content-Type': 'application/json'
+    }
+
+    if (token && token !== 'null' && token !== 'undefined') {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    // encodeURI защищает Safari/iOS WebKit от падения на не-ASCII символах в заголовках
+    if (rawInitData) {
+      headers['X-Telegram-Init-Data'] = encodeURI(rawInitData)
     }
 
     const response = await fetch('/api/v1/requests/', {
