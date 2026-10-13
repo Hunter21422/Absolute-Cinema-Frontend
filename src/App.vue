@@ -40,14 +40,49 @@ const userStore = useUserStore()
 
 onMounted(async () => {
   const tg = window.Telegram?.WebApp
+
   if (tg) {
     tg.ready()
     tg.expand()
-    if (tg.disableVerticalSwipes) tg.disableVerticalSwipes()
-    tg.headerColor = '#08090d'
-    tg.backgroundColor = '#08090d'
+
+    // Настраиваем цвета темы под интерфейс
+    try {
+      tg.headerColor = '#08090d'
+      tg.backgroundColor = '#08090d'
+    } catch (e) {
+      console.warn('Цвета темы не применились:', e)
+    }
+
+    // Запрещаем случайное закрытие приложения свайпом вниз
+    if (typeof tg.disableVerticalSwipes === 'function') {
+      tg.disableVerticalSwipes()
+    }
+
+    // Функция перевода в настоящий полноэкранный режим
+    const enterFullscreen = () => {
+      if (typeof tg.requestFullscreen === 'function' && !tg.isFullscreen) {
+        try {
+          tg.requestFullscreen()
+        } catch (e) {
+          console.warn('requestFullscreen отклонен:', e)
+        }
+      }
+    }
+
+    // 1. Пробуем включить сразу при монтировании (с небольшой задержкой для инициализации WebView)
+    setTimeout(enterFullscreen, 100)
+
+    // 2. Страховка для Android: если система потребовала жест пользователя,
+    // включаем при первом же тапе по экрану
+    const onFirstUserGesture = () => {
+      enterFullscreen()
+      window.removeEventListener('click', onFirstUserGesture)
+      window.removeEventListener('touchstart', onFirstUserGesture)
+    }
+    window.addEventListener('click', onFirstUserGesture, { once: true, passive: true })
+    window.addEventListener('touchstart', onFirstUserGesture, { once: true, passive: true })
   }
-  
+
   try {
     if (userStore?.fetchProfile) {
       await userStore.fetchProfile()
