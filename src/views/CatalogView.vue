@@ -93,11 +93,12 @@
     <!-- ДЕФОЛТНЫЙ ВИД: КИНЕМАТОГРАФИЧНЫЕ ПОЛКИ (КОГДА ФИЛЬТРЫ НЕ АКТИВНЫ) -->
     <div v-else class="space-y-6">
 
-      <!-- 4. HERO-БАННЕР ХИТА -->
+      <!-- 4. HERO-БАННЕР ХИТА (ФИЛЬМ С МАКСИМАЛЬНОЙ ОЦЕНКОЙ) -->
       <div v-if="featuredMovie" class="px-4">
         <div class="relative w-full h-[370px] rounded-3xl overflow-hidden glass-panel border border-white/10 shadow-2xl">
           <img
             :src="featuredMovie.poster_url"
+            referrerpolicy="no-referrer"
             class="w-full h-full object-cover object-top scale-105 filter brightness-75"
           />
           <div class="absolute inset-0 bg-gradient-to-t from-[#08090d] via-[#08090d]/40 to-transparent"></div>
@@ -156,7 +157,7 @@
             class="flex-shrink-0 w-28 cursor-pointer group"
           >
             <div class="relative aspect-[2/3] rounded-2xl overflow-hidden glass-panel border border-white/10 group-hover:border-rose-500/50 transition-all">
-              <img :src="item.poster_url" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+              <img :src="item.poster_url" referrerpolicy="no-referrer" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
               <span v-if="item.rating" class="absolute top-1.5 right-1.5 glass-pill px-1.5 py-0.5 rounded-md text-[9px] font-bold text-amber-300">
                 ★ {{ Number(item.rating).toFixed(1) }}
               </span>
@@ -167,7 +168,7 @@
         </div>
       </div>
 
-      <!-- 6. ПОЛКА: ПОПУЛЯРНЫЕ НОВИНКИ -->
+      <!-- 6. ПОЛКА: ПОПУЛЯРНЫЕ НОВИНКИ (ВЫСОКИЙ РЕЙТИНГ + СВЕЖИЕ ГОДЫ) -->
       <section v-if="popularMovies.length > 0" class="space-y-3">
         <div class="px-4 flex justify-between items-center">
           <h2 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
@@ -184,7 +185,7 @@
             class="flex-shrink-0 w-32 cursor-pointer group"
           >
             <div class="relative aspect-[2/3] rounded-2xl overflow-hidden glass-panel border border-white/10 group-hover:border-rose-500/50 transition-all shadow-lg">
-              <img :src="m.poster_url" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+              <img :src="m.poster_url" referrerpolicy="no-referrer" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
               <span class="absolute top-1.5 left-1.5 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded-md text-[9px] font-bold text-rose-400 border border-white/10">
                 TOP
               </span>
@@ -224,7 +225,7 @@
         </div>
       </section>
 
-      <!-- 8. ПОЛКА: СВЕЖИЕ ФИЛЬМЫ -->
+      <!-- 8. ПОЛКА: НОВЫЕ ФИЛЬМЫ (СТРОГО ПО ГОДУ ВЫПУСКА DESC) -->
       <section v-if="freshMovies.length > 0" class="space-y-3">
         <div class="px-4 flex justify-between items-center">
           <h2 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
@@ -243,7 +244,7 @@
             class="flex-shrink-0 w-32 cursor-pointer group"
           >
             <div class="relative aspect-[2/3] rounded-2xl overflow-hidden glass-panel border border-white/10 group-hover:border-rose-500/50 transition-all shadow-lg">
-              <img :src="m.poster_url" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+              <img :src="m.poster_url" referrerpolicy="no-referrer" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
               <span class="absolute top-1.5 right-1.5 glass-pill px-1.5 py-0.5 rounded-md text-[9px] font-bold text-amber-300">
                 ★ {{ Number(m.rating || 0).toFixed(1) }}
               </span>
@@ -256,7 +257,7 @@
         </div>
       </section>
 
-      <!-- 9. ПОЛКА: СЕРИАЛЫ -->
+      <!-- 9. ПОЛКА: НОВЫЕ СЕРИАЛЫ (СТРОГО ПО ГОДУ ВЫПУСКА DESC) -->
       <section v-if="seriesList.length > 0" class="space-y-3">
         <div class="px-4 flex justify-between items-center">
           <h2 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
@@ -275,7 +276,7 @@
             class="flex-shrink-0 w-32 cursor-pointer group"
           >
             <div class="relative aspect-[2/3] rounded-2xl overflow-hidden glass-panel border border-white/10 group-hover:border-rose-500/50 transition-all shadow-lg">
-              <img :src="m.poster_url" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+              <img :src="m.poster_url" referrerpolicy="no-referrer" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
               <span class="absolute bottom-1.5 left-1.5 bg-rose-600/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
                 СЕРИАЛ
               </span>
@@ -432,21 +433,47 @@ const selectContentType = (type) => {
 }
 
 const allMovies = computed(() => movieStore.movies || [])
-const featuredMovie = computed(() => allMovies.value[0] || null)
 
-// Полки
+// 1. HERO-БАННЕР: СТРОГО ФИЛЬМ С МАКСИМАЛЬНОЙ ОЦЕНКОЙ
+const featuredMovie = computed(() => {
+  if (!allMovies.value.length) return null
+  return [...allMovies.value].sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))[0]
+})
+
+// 2. ПОПУЛЯРНЫЕ НОВИНКИ: СОРТИРОВКА ПО РЕЙТИНГУ СРЕДИ СВЕЖИХ РЕЛИЗОВ
 const popularMovies = computed(() => {
   return [...allMovies.value]
-    .sort((a, b) => (Number(b.rating || 0) - Number(a.rating || 0)))
+    .sort((a, b) => {
+      // Сначала более высокий рейтинг, при равенстве - свежий год
+      const rDiff = Number(b.rating || 0) - Number(a.rating || 0)
+      if (rDiff !== 0) return rDiff
+      return Number(b.year || 0) - Number(a.year || 0)
+    })
     .slice(0, 10)
 })
 
+// 3. НОВЫЕ ФИЛЬМЫ: СТРОГО ПО ГОДУ ВЫХОДА (СВЕЖИЕ ГОДЫ ВПЕРЕД, А НЕ ПО ДАТЕ ДОБАВЛЕНИЯ В БАЗУ)
 const freshMovies = computed(() => {
-  return allMovies.value.filter(m => !m.is_series).slice(0, 10)
+  return [...allMovies.value]
+    .filter(m => !m.is_series)
+    .sort((a, b) => {
+      const yearDiff = Number(b.year || 0) - Number(a.year || 0)
+      if (yearDiff !== 0) return yearDiff
+      return Number(b.rating || 0) - Number(a.rating || 0)
+    })
+    .slice(0, 10)
 })
 
+// 4. НОВЫЕ СЕРИАЛЫ: СТРОГО ПО ГОДУ ВЫХОДА СЕРИАЛА (YEAR DESC)
 const seriesList = computed(() => {
-  return allMovies.value.filter(m => m.is_series).slice(0, 10)
+  return [...allMovies.value]
+    .filter(m => m.is_series)
+    .sort((a, b) => {
+      const yearDiff = Number(b.year || 0) - Number(a.year || 0)
+      if (yearDiff !== 0) return yearDiff
+      return Number(b.rating || 0) - Number(a.rating || 0)
+    })
+    .slice(0, 10)
 })
 
 // Проверка активности фильтров
