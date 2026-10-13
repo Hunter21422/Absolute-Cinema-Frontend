@@ -25,17 +25,19 @@
       </div>
     </div>
 
-    <!-- 2. ВЫБОР ТИПА: Все / Фильмы / Сериалы -->
-    <div class="px-4 flex gap-1.5 p-1 glass-panel rounded-2xl max-w-md mx-auto">
-      <button
-        v-for="tab in contentTabs"
-        :key="tab.value"
-        @click="selectContentType(tab.value)"
-        class="flex-1 py-1.5 text-[11px] font-semibold rounded-xl transition-all"
-        :class="movieStore.filters.contentType === tab.value ? 'bg-rose-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'"
-      >
-        {{ tab.label }}
-      </button>
+    <!-- 2. ВЫБОР ТИПА (Скроллируемые табы для мобильных экранов) -->
+    <div class="px-4">
+      <div class="flex gap-1.5 p-1 glass-panel rounded-2xl max-w-md mx-auto overflow-x-auto custom-scrollbar-x">
+        <button
+          v-for="tab in contentTabs"
+          :key="tab.value"
+          @click="selectContentType(tab.value)"
+          class="whitespace-nowrap px-3.5 py-1.5 text-[11px] font-semibold rounded-xl transition-all shrink-0 text-center flex-1"
+          :class="movieStore.filters.contentType === tab.value ? 'bg-rose-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-200'"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
     </div>
 
     <!-- 3. ГОРИЗОНТАЛЬНАЯ ЛЕНТА ЖАНРОВ -->
@@ -168,7 +170,7 @@
         </div>
       </div>
 
-      <!-- 6. ПОЛКА: ПОПУЛЯРНЫЕ НОВИНКИ (ВЫСОКИЙ РЕЙТИНГ + СВЕЖИЕ ГОДЫ) -->
+      <!-- 6. ПОЛКА: ПОПУЛЯРНЫЕ НОВИНКИ -->
       <section v-if="popularMovies.length > 0" class="space-y-3">
         <div class="px-4 flex justify-between items-center">
           <h2 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
@@ -225,7 +227,7 @@
         </div>
       </section>
 
-      <!-- 8. ПОЛКА: НОВЫЕ ФИЛЬМЫ (СТРОГО ПО ГОДУ ВЫПУСКА DESC) -->
+      <!-- 8. ПОЛКА: НОВЫЕ ФИЛЬМЫ (ТОЛЬКО ХУДОЖЕСТВЕННЫЕ, БЕЗ МУЛЬТФИЛЬМОВ) -->
       <section v-if="freshMovies.length > 0" class="space-y-3">
         <div class="px-4 flex justify-between items-center">
           <h2 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
@@ -257,7 +259,7 @@
         </div>
       </section>
 
-      <!-- 9. ПОЛКА: НОВЫЕ СЕРИАЛЫ (СТРОГО ПО ГОДУ ВЫПУСКА DESC) -->
+      <!-- 9. ПОЛКА: НОВЫЕ СЕРИАЛЫ (ТОЛЬКО ХУДОЖЕСТВЕННЫЕ, БЕЗ АНИМЕ И МУЛЬТСЕРИАЛОВ) -->
       <section v-if="seriesList.length > 0" class="space-y-3">
         <div class="px-4 flex justify-between items-center">
           <h2 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
@@ -292,7 +294,77 @@
         </div>
       </section>
 
-      <!-- 10. КАРТОЧКА ЗАКАЗА КИНО В ПОДВАЛЕ -->
+      <!-- 10. ПОЛКА: МУЛЬТФИЛЬМЫ (ПОЛНОМЕТРАЖНАЯ АНИМАЦИЯ) -->
+      <section v-if="cartoonMovies.length > 0" class="space-y-3">
+        <div class="px-4 flex justify-between items-center">
+          <h2 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+            <span>🍿</span> Мультфильмы
+          </h2>
+          <button @click="selectContentType('cartoon')" class="text-[11px] text-rose-400 hover:underline">
+            Все мультфильмы →
+          </button>
+        </div>
+
+        <div class="flex gap-3 overflow-x-auto custom-scrollbar-x px-4 pb-2">
+          <div
+            v-for="m in cartoonMovies"
+            :key="'cart_' + m.id"
+            @click="$router.push(`/movie/${m.id}`)"
+            class="flex-shrink-0 w-32 cursor-pointer group"
+          >
+            <div class="relative aspect-[2/3] rounded-2xl overflow-hidden glass-panel border border-white/10 group-hover:border-rose-500/50 transition-all shadow-lg">
+              <img :src="m.poster_url" referrerpolicy="no-referrer" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+              <span class="absolute bottom-1.5 left-1.5 bg-amber-600/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
+                МУЛЬТФИЛЬМ
+              </span>
+              <span class="absolute top-1.5 right-1.5 glass-pill px-1.5 py-0.5 rounded-md text-[9px] font-bold text-amber-300">
+                ★ {{ Number(m.rating || 0).toFixed(1) }}
+              </span>
+            </div>
+            <h3 class="text-xs font-semibold text-zinc-100 truncate mt-1.5 group-hover:text-rose-400 transition">
+              {{ m.title }}
+            </h3>
+            <p class="text-[10px] text-zinc-500 truncate">{{ m.year }} • {{ m.genre }}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 11. ПОЛКА: МУЛЬТСЕРИАЛЫ И АНИМЕ -->
+      <section v-if="cartoonSeries.length > 0" class="space-y-3">
+        <div class="px-4 flex justify-between items-center">
+          <h2 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+            <span>🎨</span> Мультсериалы и аниме
+          </h2>
+          <button @click="selectContentType('cartoon_series')" class="text-[11px] text-rose-400 hover:underline">
+            Все мультсериалы →
+          </button>
+        </div>
+
+        <div class="flex gap-3 overflow-x-auto custom-scrollbar-x px-4 pb-2">
+          <div
+            v-for="m in cartoonSeries"
+            :key="'cser_' + m.id"
+            @click="$router.push(`/movie/${m.id}`)"
+            class="flex-shrink-0 w-32 cursor-pointer group"
+          >
+            <div class="relative aspect-[2/3] rounded-2xl overflow-hidden glass-panel border border-white/10 group-hover:border-rose-500/50 transition-all shadow-lg">
+              <img :src="m.poster_url" referrerpolicy="no-referrer" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+              <span class="absolute bottom-1.5 left-1.5 bg-purple-600/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
+                АНИМАЦИЯ
+              </span>
+              <span class="absolute top-1.5 right-1.5 glass-pill px-1.5 py-0.5 rounded-md text-[9px] font-bold text-amber-300">
+                ★ {{ Number(m.rating || 0).toFixed(1) }}
+              </span>
+            </div>
+            <h3 class="text-xs font-semibold text-zinc-100 truncate mt-1.5 group-hover:text-rose-400 transition">
+              {{ m.title }}
+            </h3>
+            <p class="text-[10px] text-zinc-500 truncate">{{ m.year }} • {{ m.genre }}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 12. КАРТОЧКА ЗАКАЗА КИНО В ПОДВАЛЕ -->
       <div class="px-4 pt-2">
         <div class="glass-panel p-5 rounded-3xl border border-rose-500/20 bg-gradient-to-r from-rose-950/20 to-black/40 text-center space-y-2.5">
           <div class="text-2xl">🍿</div>
@@ -397,10 +469,13 @@ import MovieCard from '../components/MovieCard.vue'
 const movieStore = useMovieStore()
 const historyList = ref([])
 
+// 5 категорий контента
 const contentTabs = [
-  { label: 'Все подряд', value: 'all' },
+  { label: 'Все', value: 'all' },
   { label: 'Фильмы', value: 'movie' },
-  { label: 'Сериалы', value: 'series' }
+  { label: 'Сериалы', value: 'series' },
+  { label: 'Мультфильмы', value: 'cartoon' },
+  { label: 'Мультсериалы', value: 'cartoon_series' }
 ]
 
 // Сети и студии
@@ -418,14 +493,12 @@ const filterByNetwork = (query) => {
   movieStore.fetchMovies(true)
 }
 
-// Выбор жанра
 const selectGenre = (genre) => {
   if (movieStore.filters.genre === genre) return
   movieStore.filters.genre = genre
   movieStore.fetchMovies(true)
 }
 
-// Выбор категории (Фильмы/Сериалы)
 const selectContentType = (type) => {
   if (movieStore.filters.contentType === type) return
   movieStore.filters.contentType = type
@@ -434,17 +507,22 @@ const selectContentType = (type) => {
 
 const allMovies = computed(() => movieStore.movies || [])
 
-// 1. HERO-БАННЕР: СТРОГО ФИЛЬМ С МАКСИМАЛЬНОЙ ОЦЕНКОЙ
+// Хелпер: проверка анимации (мультфильмы и аниме)
+const isCartoon = (m) => {
+  const g = (m.genre || '').toLowerCase()
+  return g.includes('мультфильм') || g.includes('аниме')
+}
+
+// 1. HERO-БАННЕР: Фильм или сериал с максимальной оценкой
 const featuredMovie = computed(() => {
   if (!allMovies.value.length) return null
   return [...allMovies.value].sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))[0]
 })
 
-// 2. ПОПУЛЯРНЫЕ НОВИНКИ: СОРТИРОВКА ПО РЕЙТИНГУ СРЕДИ СВЕЖИХ РЕЛИЗОВ
+// 2. ПОПУЛЯРНЫЕ НОВИНКИ: Общий топ по рейтингу и году
 const popularMovies = computed(() => {
   return [...allMovies.value]
     .sort((a, b) => {
-      // Сначала более высокий рейтинг, при равенстве - свежий год
       const rDiff = Number(b.rating || 0) - Number(a.rating || 0)
       if (rDiff !== 0) return rDiff
       return Number(b.year || 0) - Number(a.year || 0)
@@ -452,25 +530,49 @@ const popularMovies = computed(() => {
     .slice(0, 10)
 })
 
-// 3. НОВЫЕ ФИЛЬМЫ: СТРОГО ПО ГОДУ ВЫХОДА (СВЕЖИЕ ГОДЫ ВПЕРЕД, А НЕ ПО ДАТЕ ДОБАВЛЕНИЯ В БАЗУ)
+// 3. НОВЫЕ ФИЛЬМЫ: Только художественное кино (БЕЗ мультиков)
 const freshMovies = computed(() => {
   return [...allMovies.value]
-    .filter(m => !m.is_series)
+    .filter(m => !m.is_series && !isCartoon(m))
     .sort((a, b) => {
-      const yearDiff = Number(b.year || 0) - Number(a.year || 0)
-      if (yearDiff !== 0) return yearDiff
+      const yDiff = Number(b.year || 0) - Number(a.year || 0)
+      if (yDiff !== 0) return yDiff
       return Number(b.rating || 0) - Number(a.rating || 0)
     })
     .slice(0, 10)
 })
 
-// 4. НОВЫЕ СЕРИАЛЫ: СТРОГО ПО ГОДУ ВЫХОДА СЕРИАЛА (YEAR DESC)
+// 4. НОВЫЕ СЕРИАЛЫ: Только игровые сериалы (БЕЗ мультсериалов и аниме)
 const seriesList = computed(() => {
   return [...allMovies.value]
-    .filter(m => m.is_series)
+    .filter(m => m.is_series && !isCartoon(m))
     .sort((a, b) => {
-      const yearDiff = Number(b.year || 0) - Number(a.year || 0)
-      if (yearDiff !== 0) return yearDiff
+      const yDiff = Number(b.year || 0) - Number(a.year || 0)
+      if (yDiff !== 0) return yDiff
+      return Number(b.rating || 0) - Number(a.rating || 0)
+    })
+    .slice(0, 10)
+})
+
+// 5. МУЛЬТФИЛЬМЫ: Полнометражная анимация (Школа монстров, Человек-паук: Паутина вселенных)
+const cartoonMovies = computed(() => {
+  return [...allMovies.value]
+    .filter(m => !m.is_series && isCartoon(m))
+    .sort((a, b) => {
+      const yDiff = Number(b.year || 0) - Number(a.year || 0)
+      if (yDiff !== 0) return yDiff
+      return Number(b.rating || 0) - Number(a.rating || 0)
+    })
+    .slice(0, 10)
+})
+
+// 6. МУЛЬТСЕРИАЛЫ И АНИМЕ: Гамбол, Ван-Пис, Магическая битва
+const cartoonSeries = computed(() => {
+  return [...allMovies.value]
+    .filter(m => m.is_series && isCartoon(m))
+    .sort((a, b) => {
+      const yDiff = Number(b.year || 0) - Number(a.year || 0)
+      if (yDiff !== 0) return yDiff
       return Number(b.rating || 0) - Number(a.rating || 0)
     })
     .slice(0, 10)
@@ -505,7 +607,7 @@ const clearHistory = () => {
   historyList.value = []
 }
 
-// Модальное окно
+// Модальное окно заказа кино
 const isRequestModalOpen = ref(false)
 const requestLoading = ref(false)
 const requestSuccess = ref('')
@@ -570,6 +672,10 @@ const submitMovieRequest = async () => {
 onMounted(async () => {
   historyList.value = historyService.getHistory()
   await movieStore.fetchGenres()
+  // Запрашиваем 100 записей для полной отрисовки всех полок
+  if (movieStore.filters) {
+    movieStore.filters.limit = 100
+  }
   movieStore.fetchMovies()
 })
 </script>
