@@ -14,16 +14,17 @@
       </button>
     </div>
 
-    <!-- Iframe-балансер с полными разрешениями для Android WebView -->
+    <!-- Iframe-балансер с полными правами и делегированием Fullscreen внешнему домену -->
     <iframe
       v-if="url && isIframe"
       :key="'iframe_' + streamKey"
       :src="embedUrl"
       class="w-full h-full border-0 relative z-10"
-      allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write"
-      allowfullscreen
-      webkitallowfullscreen
-      mozallowfullscreen
+      allow="autoplay *; fullscreen *; picture-in-picture *; encrypted-media *; gyroscope *; accelerometer *; clipboard-write *"
+      allowfullscreen="true"
+      webkitallowfullscreen="true"
+      mozallowfullscreen="true"
+      frameborder="0"
       @load="isLoading = false"
     ></iframe>
 
